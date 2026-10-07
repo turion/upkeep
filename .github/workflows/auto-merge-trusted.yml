@@ -20,7 +20,7 @@ jobs:
   merge:
     runs-on: ubuntu-latest
     steps:
-      - name: Check trusted maintenance allow-list
+      - name: Check trusted authorship
         id: eligibility
         uses: actions/github-script@v7
         with:

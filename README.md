@@ -26,4 +26,4 @@ Set up the repository in this order:
 
 4. **Allow the workflow permissions.** The workflow declares `contents: write` and `pull-requests: write` for its token. Check that repository or organization Actions policy permits those permissions; no broader repository-wide token permission is needed for this workflow.
 
-5. **Verify the setup.** Review the workflow run and the pull request's checks and auto-merge status. A manual **Actions → Auto-merge trusted maintenance → Run workflow** dispatch takes a PR number, but it uses the same allow-list and can enable auto-merge, so only dispatch it for a PR you intend to make eligible.
+5. **Verify the setup.** Review the workflow run and the pull request's checks and auto-merge status. A manual **Actions → Auto-merge trusted maintenance → Run workflow** dispatch takes a PR number, but it uses the same authorship checks and can enable auto-merge, so only dispatch it for a PR you intend to make eligible.
