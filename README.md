@@ -3,11 +3,11 @@ Personal OSS maintenance steward: policies, skills, and automation for CI triage
 
 ## Configure trusted maintenance auto-merge
 
-The workflow at `.github/workflows/auto-merge-trusted.yml` enables GitHub auto-merge only for non-draft pull requests from this repository that match its allow-list: Dependabot PRs and the configured flake-lock updater branch names. Dependabot PRs are eligible for **major, minor, and patch** updates. Fork PRs and other authors or branch names are not eligible.
+The workflow at `.github/workflows/auto-merge-trusted.yml` enables GitHub auto-merge only for non-draft, same-repository pull requests authored by the repository owner, with a GitHub-recognized commit co-authored by the owner, or with an `Assisted-by: upkeep-bot` commit trailer. Branch names and bot identities alone do not establish trust; fork PRs are never eligible.
 
 Set up the repository in this order:
 
-1. **Configure updates.** For Dependabot, add the ecosystems and directories you want to `.github/dependabot.yml` and set a schedule. For example, a single npm entry looks like:
+1. **Configure updates.** Add the ecosystems and directories you want to `.github/dependabot.yml` and set a schedule. For example, a single npm entry looks like:
 
    ```yaml
    version: 2
@@ -18,7 +18,7 @@ Set up the repository in this order:
          interval: weekly
    ```
 
-   Adapt the ecosystem and directory to your project; add entries rather than replacing other update rules. Do not exclude major updates if you want them to be eligible. For flake locks, configure your chosen lock-update action to create branches matching one of the patterns in the workflow (`update_flake_lock_action`, `update-flake-lock`, or `update-flake-lock-action`, optionally followed by a hyphen and suffix).
+   Adapt the ecosystem and directory to your project; add entries rather than replacing other update rules. Routine bot updates are not auto-merged based on their identity or branch name; their commits must satisfy the authorship rule above.
 
 2. **Require CI before merging.** In repository **Settings → Rules → Rulesets** (or **Settings → Branches** for a classic branch protection rule), protect the default branch and enable required pull requests and the CI status checks that must pass. Select the actual check names reported by your workflows. Without required checks, auto-merge has no check gate to wait for.
 

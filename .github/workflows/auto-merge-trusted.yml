@@ -1,4 +1,4 @@
-# Auto-merge only trusted maintenance PRs from this repository, never forks.
+# Auto-merge only same-repository PRs with trusted authorship, never forks.
 # GitHub auto-merge waits for branch protection's required status checks.
 name: Auto-merge trusted maintenance
 
@@ -33,23 +33,61 @@ jobs:
               pull_number: pullNumber,
             });
 
-            // Only same-repository PRs are eligible. Dependabot is trusted by
-            // its immutable bot login for every update type, including major
-            // versions; flake updates use these documented action/workflow
-            // branch names and a restricted suffix alphabet.
             const sameRepository = pr.head.repo?.full_name === context.payload.repository.full_name;
-            const dependabot = pr.user.login === 'dependabot[bot]' &&
-              /^dependabot\/[a-z0-9_-]+\/[a-zA-Z0-9._/-]+$/.test(pr.head.ref);
-            const flakeUpdate = [
-              /^update_flake_lock_action(?:-[a-z0-9][a-z0-9._-]*)?$/,
-              /^update-flake-lock(?:-[a-z0-9][a-z0-9._-]*)?$/,
-              /^update-flake-lock-action(?:-[a-z0-9][a-z0-9._-]*)?$/,
-            ].some((pattern) => pattern.test(pr.head.ref));
-            const safe = sameRepository && !pr.draft && (dependabot || flakeUpdate);
+            const maintainerLogin = context.repo.owner.toLowerCase();
+            const authoredByMaintainer = pr.user.login.toLowerCase() === maintainerLogin;
+            let coauthoredByMaintainer = false;
+            let assistedByUpkeep = false;
+
+            if (!authoredByMaintainer) {
+              const query = `query($owner: String!, $name: String!, $number: Int!, $cursor: String) {
+                repository(owner: $owner, name: $name) {
+                  pullRequest(number: $number) {
+                    commits(first: 100, after: $cursor) {
+                      pageInfo { hasNextPage endCursor }
+                      nodes {
+                        commit {
+                          message
+                          authors(first: 10) {
+                            nodes { user { login } }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }`;
+              let cursor = null;
+              do {
+                const { repository } = await github.graphql(query, {
+                  owner: context.repo.owner,
+                  name: context.repo.repo,
+                  number: pullNumber,
+                  cursor,
+                });
+                const page = repository.pullRequest.commits;
+                for (const { commit } of page.nodes) {
+                  if (commit.authors.nodes.some(({ user }) =>
+                    user?.login?.toLowerCase() === maintainerLogin
+                  )) {
+                    coauthoredByMaintainer = true;
+                  }
+
+                  const footer = commit.message.trim().split(/\n\s*\n/).pop() || '';
+                  if (/^Assisted-by:\s*upkeep-bot\s*$/m.test(footer)) {
+                    assistedByUpkeep = true;
+                  }
+                }
+                cursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
+              } while (cursor);
+            }
+
+            const trustedAuthor = authoredByMaintainer || coauthoredByMaintainer || assistedByUpkeep;
+            const safe = sameRepository && !pr.draft && trustedAuthor;
 
             core.setOutput('safe', String(safe));
             core.setOutput('number', String(pullNumber));
-            core.info(`Trusted maintenance PR: ${safe}`);
+            core.info(`Trusted authorship: ${trustedAuthor}; trusted maintenance PR: ${safe}`);
       - name: Enable auto-merge
         if: steps.eligibility.outputs.safe == 'true'
         env:
