@@ -1,0 +1,46 @@
+const assert = require('node:assert/strict');
+const test = require('node:test');
+
+const { extractRootCause, selectRepos, shouldRetry } = require('./ci-failures.js');
+
+const nixFailure = [
+  "2026-10-06T20:00:00.0Z error: Cannot build '/nix/store/fhl6rm0z0aq0w6j02z615mwdl9mwgpfi-monad-bayes-1.3.0.5.drv'.",
+  '2026-10-06T20:00:00.0Z        Reason: builder failed with exit code 1.',
+  "2026-10-06T20:00:01.0Z error: Cannot build '/nix/store/a02clrh883krgp9lhh99c8sg5azq6sb5-rhine-bayes-1.8.drv'.",
+  '2026-10-06T20:00:01.0Z        Reason: 1 dependency failed.',
+].join('\n');
+
+test('root cause skips dependency-failed cascades', () => {
+  const cause = extractRootCause(nixFailure);
+  assert.equal(cause.kind, 'nix-build');
+  assert.equal(cause.subject, 'monad-bayes-1.3.0.5');
+  assert.equal(cause.reason, 'builder failed with exit code 1.');
+});
+
+test('root cause ignores cascade-only logs', () => {
+  const log = "error: Cannot build '/nix/store/a02clrh883krgp9lhh99c8sg5azq6sb5-x-1.drv'.\n       Reason: 1 dependency failed.";
+  assert.equal(extractRootCause(log).kind, 'unknown');
+});
+
+test('truncated tarball is transient', () => {
+  const log = 'error: cannot read file from tarball: Truncated tar archive detected while reading data';
+  assert.equal(extractRootCause(log).kind, 'transient');
+  assert.equal(shouldRetry({ runAttempt: 1, jobLogs: [log] }).retry, true);
+});
+
+test('retry requires transient evidence in every failed job', () => {
+  const transient = 'ECONNRESET while fetching';
+  assert.equal(shouldRetry({ runAttempt: 1, jobLogs: [nixFailure] }).retry, false);
+  assert.equal(shouldRetry({ runAttempt: 1, jobLogs: [transient, nixFailure] }).retry, false);
+  assert.equal(shouldRetry({ runAttempt: 1, jobLogs: [] }).retry, false);
+});
+
+test('retry stops at the attempt limit', () => {
+  assert.equal(shouldRetry({ runAttempt: 2, jobLogs: ['ECONNRESET'] }).retry, false);
+});
+
+test('repo selection honours opt-outs, forks and archives', () => {
+  const repo = (name, extra = {}) => ({ name, full_name: `turion/${name}`, owner: { login: 'turion' }, ...extra });
+  const repos = [repo('rhine'), repo('old', { archived: true }), repo('fork', { fork: true }), repo('quiet'), repo('Other')];
+  assert.deepEqual(selectRepos(repos, { optOut: ['quiet', 'turion/other'], owner: 'turion' }), ['turion/rhine']);
+});

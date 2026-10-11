@@ -20,6 +20,15 @@ Classify CI failures and route maintenance work without acting as the human main
 - Follow [`policies/escalation-contract.md`](../policies/escalation-contract.md) for allowed outcomes, attempt limits, and required reporting.
 - The `upkeep:run` label is a human trigger, not permission to bypass validation or safety rules. The issue validator checks the triage report and does not launch a skill.
 
+## Issue tracking
+
+- Every issue that tracks a CI failure carries the `spoke-ci-failure` label and lives in `upkeep`, never in the failing repository.
+- Before opening an issue, read all open `spoke-ci-failure` issues (title, body, comments). If one describes the same root cause, comment on it with the new occurrence (repo, run link, date, evidence); otherwise open a new issue. One issue per root cause.
+- Find the root cause, not the symptom. For Nix builds, take the first `Cannot build '<package>.drv'` whose reason is not `N dependency failed`; ignore downstream derivations and the `alls-green` gate job.
+- Failures hitting every matrix job and operating system identically point at a deterministic (usually upstream) cause. Do not retry them.
+- Retry only on transient evidence (truncated tarball, network reset, runner loss), at most once per run, and record it in the attempt count. `.github/workflows/ci-triage.yml` polls all of the owner's repositories (opt-outs in `.github/ci-triage-repos.json`) and applies this retry rule; its summary lists failures needing triage.
+- When many comments accumulate on the same issue, propose a deterministic rule for that cause.
+
 ## Required triage report
 
 Include these sections in the issue body:

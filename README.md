@@ -31,3 +31,7 @@ Set up the repository in this order:
 ## CI triage guardrails
 
 CI triage follows [`policies/escalation-contract.md`](policies/escalation-contract.md). Use the CI triage issue form to record the required evidence and report fields. Adding the `upkeep:run` label validates the classification, evidence, and attempt count; invalid requests have the label removed with an automated explanation. Validation does not launch a skill or authorize changes.
+
+## CI failure polling
+
+`.github/workflows/ci-triage.yml` runs every six hours, lists failed runs in all of the owner's non-archived, non-fork repositories (default branch and bot-authored update branches), and re-runs failed jobs once when every failed job's log shows a transient cause. The summary lists the root cause of each failure. Opt a repository out via `optOut` in `.github/ci-triage-repos.json`. Add a `UPKEEP_CI_TOKEN` secret (read access to repositories and Actions logs, `actions: write` for retries). Issues tracking failures carry the `spoke-ci-failure` label; see [`skills/ci-triage.md`](skills/ci-triage.md). Manual dispatches default to dry-run.
