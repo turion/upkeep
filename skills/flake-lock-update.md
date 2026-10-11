@@ -8,9 +8,9 @@ Prefer a standard `update-flake-lock` GitHub Action over agentic work, such as [
 
 - Auto-merge eligibility is defined by [`auto-merge-trusted.yml`](../.github/workflows/auto-merge-trusted.yml):
   - The PR must be non-draft and from this repository.
-  - It must be authored by the repository owner, include a GitHub-recognized commit authored or co-authored by the owner, or include an `Assisted-by: upkeep-bot` commit footer.
+  - It must be authored by the repository owner, include a GitHub-recognized commit authored or co-authored by the owner, or include the designated `Assisted-by: upkeep-bot` commit footer.
   - Bot identity and branch names alone are not trusted.
-- The workflow checks the exact `Assisted-by: upkeep-bot` footer for backward compatibility. Ordinary upkeep commits should use the `Assisted-by: upkeep; <tool>` convention in [`AGENTS.md`](../AGENTS.md).
+- The `Assisted-by: upkeep-bot` footer is a separate, self-asserted auto-merge allow-list marker, not the standard AI disclosure. Only actual upkeep-generated commits intended to qualify should use it. Ordinary AI-assisted commits should use the `Assisted-by: upkeep; <tool>` disclosure convention in [`AGENTS.md`](../AGENTS.md); that disclosure alone does not satisfy the workflow's trust check.
 - Require all required checks to be green before merging; configure branch protection and auto-merge accordingly.
 - For repos with governance constraints, do not publish human-facing PR text or comments without review.
 - Follow the target repository's contribution and AI policies.
