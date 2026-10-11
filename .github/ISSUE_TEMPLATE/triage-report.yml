@@ -1,0 +1,58 @@
+name: CI triage report
+description: Record evidence and next steps for a CI failure
+title: "CI triage: "
+body:
+  - type: dropdown
+    id: classification
+    attributes:
+      label: Classification
+      # Keep these values in sync with the workflow validator, skills/ci-triage.md,
+      # and policies/escalation-contract.md.
+      options:
+        - Flaky
+        - Simple mechanical
+        - Complex or policy-sensitive
+        - External upstream breakage
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Include relevant CI log excerpts or links. Wrap pasted logs in fenced code blocks to preserve headings.
+    validations:
+      required: true
+  - type: input
+    id: attempt-count
+    attributes:
+      label: Attempt count
+      description: Enter an integer from 0 through 2.
+      placeholder: "0"
+    validations:
+      required: true
+  - type: textarea
+    id: what-was-tried
+    attributes:
+      label: What was tried
+    validations:
+      required: true
+  - type: textarea
+    id: uncertainty
+    attributes:
+      label: Uncertainty
+      description: State what remains unknown, or enter "None".
+    validations:
+      required: true
+  - type: textarea
+    id: recommended-human-action
+    attributes:
+      label: Recommended human action
+    validations:
+      required: true
+  - type: textarea
+    id: classical-alternative
+    attributes:
+      label: Classical alternative considered
+      description: Name the non-agentic tool or method and whether it is suitable.
+    validations:
+      required: true

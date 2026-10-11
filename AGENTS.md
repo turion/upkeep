@@ -11,6 +11,7 @@
    - All generated text, PRs, issue comments, or code intended to be published upstream must be clearly marked as generated or assisted by the tool.
    - For Git commits, if LLM assistance is used, include a trailer in the final commit message. For Nixpkgs, follow the policy in `policies/nixpkgs.md` exactly.
    - The default convention is: `Assisted-by: upkeep; <tool>`, or where required `Assisted-by: <agent-name>; <tool or model>`.
+   - The `Assisted-by: upkeep-bot` trailer is a separate, self-asserted auto-merge allow-list marker, not an AI disclosure. Use it only on actual upkeep-generated commits intended to qualify under the target repository's policy.
 
 2. No direct agent-to-human contact without explicit human green light.
    - Do not comment on third-party issues or pull requests directly unless the human maintainer has explicitly approved it.
@@ -65,5 +66,6 @@
 
 - `policies/nixpkgs.md`
 - `policies/stackage.md`
+- `policies/escalation-contract.md`
 
 These are the canonical sources of truth for upstream policy-sensitive work.

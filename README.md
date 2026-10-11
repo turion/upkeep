@@ -27,3 +27,7 @@ Set up the repository in this order:
 4. **Allow the workflow permissions.** The workflow declares `contents: write` and `pull-requests: write` for its token. Check that repository or organization Actions policy permits those permissions; no broader repository-wide token permission is needed for this workflow.
 
 5. **Verify the setup.** Review the workflow run and the pull request's checks and auto-merge status. A manual **Actions → Auto-merge trusted maintenance → Run workflow** dispatch takes a PR number, but it uses the same authorship checks and can enable auto-merge, so only dispatch it for a PR you intend to make eligible.
+
+## CI triage guardrails
+
+CI triage follows [`policies/escalation-contract.md`](policies/escalation-contract.md). Use the CI triage issue form to record the required evidence and report fields. Adding the `upkeep:run` label validates the classification, evidence, and attempt count; invalid requests have the label removed with an automated explanation. Validation does not launch a skill or authorize changes.

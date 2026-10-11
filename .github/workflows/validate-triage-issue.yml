@@ -1,0 +1,66 @@
+name: Validate upkeep triage issue
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: triage-validation-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    if: github.event.label.name == 'upkeep:run' && startsWith(github.event.issue.title, 'CI triage:')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out triage validator
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Test triage validator
+        run: node --test .github/scripts/triage-report.test.js
+      - name: Validate triage report
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          script: |
+            const { validateTriageReport } = require(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/triage-report.js`
+            );
+            const { data: issue } = await github.rest.issues.get({
+              ...context.repo,
+              issue_number: context.payload.issue.number,
+            });
+            if (!issue.title.startsWith('CI triage:') ||
+                !issue.labels.some(({ name }) => name === 'upkeep:run')) {
+              core.info(`Issue #${issue.number} is no longer an eligible triage request.`);
+              return;
+            }
+            const errors = validateTriageReport(issue.body || '');
+            if (errors.length > 0) {
+              try {
+                await github.rest.issues.removeLabel({
+                  ...context.repo,
+                  issue_number: issue.number,
+                  name: 'upkeep:run',
+                });
+              } catch (error) {
+                if (error.status !== 404) {
+                  throw error;
+                }
+              }
+              await github.rest.issues.createComment({
+                ...context.repo,
+                issue_number: issue.number,
+                body: [
+                  'Upkeep triage validation failed, so the `upkeep:run` label was removed. Use the CI triage issue form, correct the following fields, and re-add the label:',
+                  '',
+                  ...errors.map((error) => `- ${error}`),
+                  '',
+                  '_Automated validation message from upkeep._',
+                ].join('\n'),
+              });
+              return;
+            }
+            core.info(`Triage report for issue #${issue.number} passed validation.`);
