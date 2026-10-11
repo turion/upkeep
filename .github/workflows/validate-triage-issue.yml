@@ -5,6 +5,7 @@ on:
     types: [labeled]
 
 permissions:
+  contents: read
   issues: write
 
 concurrency:
@@ -13,91 +14,30 @@ concurrency:
 
 jobs:
   validate:
-    if: github.event.label.name == 'upkeep:run'
+    if: github.event.label.name == 'upkeep:run' && startsWith(github.event.issue.title, 'CI triage:')
     runs-on: ubuntu-latest
     steps:
+      - name: Check out triage validator
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Test triage validator
+        run: node --test .github/scripts/triage-report.test.js
       - name: Validate triage report
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
+            const { validateTriageReport } = require(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/triage-report.js`
+            );
             const { data: issue } = await github.rest.issues.get({
               ...context.repo,
               issue_number: context.payload.issue.number,
             });
-            if (!issue.labels.some(({ name }) => name === 'upkeep:run')) {
-              core.info(`Issue #${issue.number} no longer has the upkeep:run label.`);
+            if (!issue.title.startsWith('CI triage:') ||
+                !issue.labels.some(({ name }) => name === 'upkeep:run')) {
+              core.info(`Issue #${issue.number} is no longer an eligible triage request.`);
               return;
             }
-            const MAX_ATTEMPTS = 2;
-            const body = issue.body || '';
-            const knownSections = new Set([
-              'classification',
-              'evidence',
-              'attempt count',
-              'what was tried',
-              'uncertainty',
-              'recommended human action',
-              'classical alternative considered',
-            ]);
-            const headings = [];
-            const seenSections = new Set();
-            let fence = null;
-            let offset = 0;
-            for (const line of body.split(/(?<=\n)/)) {
-              const text = line.replace(/\r?\n$/, '');
-              const marker = text.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
-              if (fence) {
-                if (marker && marker[1][0] === fence.character &&
-                    marker[1].length >= fence.length && marker[2].trim() === '') {
-                  fence = null;
-                }
-                offset += line.length;
-                continue;
-              }
-              if (marker) {
-                fence = { character: marker[1][0], length: marker[1].length };
-                offset += line.length;
-                continue;
-              }
-              const heading = text.match(/^###\s+(.+?)\s*$/);
-              const name = heading?.[1].trim().toLowerCase();
-              if (name && knownSections.has(name) && !seenSections.has(name)) {
-                headings.push({ index: offset, length: line.length, name });
-                seenSections.add(name);
-              }
-              offset += line.length;
-            }
-            const sections = new Map();
-            for (let index = 0; index < headings.length; index += 1) {
-              const heading = headings[index];
-              const contentStart = heading.index + heading.length;
-              const contentEnd = headings[index + 1]?.index ?? body.length;
-              sections.set(heading.name, body.slice(contentStart, contentEnd).trim());
-            }
-            const field = (name) => {
-              const value = sections.get(name.toLowerCase()) || '';
-              return /^_no response_$/i.test(value) ? '' : value;
-            };
-            const errors = [];
-            // Keep these values in sync with the triage-report issue form,
-            // skills/ci-triage.md, and policies/escalation-contract.md.
-            const classifications = [
-              'flaky',
-              'simple mechanical',
-              'complex or policy-sensitive',
-              'external upstream breakage',
-            ];
-            if (!classifications.includes(field('Classification').toLowerCase())) {
-              errors.push('Classification must be one of the supported values.');
-            }
-            if (!field('Evidence')) {
-              errors.push('Evidence is required.');
-            }
-            const attemptCount = field('Attempt count');
-            if (!/^(0|[1-9]\d*)$/.test(attemptCount) || Number(attemptCount) > MAX_ATTEMPTS) {
-              errors.push(`Attempt count must be an integer from 0 through ${MAX_ATTEMPTS}.`);
-            }
-
+            const errors = validateTriageReport(issue.body || '');
             if (errors.length > 0) {
               try {
                 await github.rest.issues.removeLabel({
