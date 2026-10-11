@@ -66,6 +66,20 @@ test('keeps the first recognized occurrence of a section', () => {
   assert.deepEqual(validateTriageReport(body), []);
 });
 
+test('rejects empty evidence when a duplicate heading contains the empty-response placeholder', () => {
+  const body = [
+    '### Classification',
+    'Simple mechanical',
+    '### Evidence',
+    '',
+    '### Evidence',
+    '_No response_',
+    '### Attempt count',
+    '1',
+  ].join('\n');
+  assert.ok(validateTriageReport(body).includes('Evidence is required.'));
+});
+
 test('rejects empty evidence and the issue form empty-response placeholder', () => {
   for (const evidence of ['', '_No response_']) {
     assert.ok(validateTriageReport(report({ evidence })).includes('Evidence is required.'));
