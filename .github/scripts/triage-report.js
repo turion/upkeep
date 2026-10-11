@@ -19,7 +19,6 @@ const KNOWN_SECTIONS = new Set([
 
 function parseSections(body) {
   const headings = [];
-  const seenSections = new Set();
   let fence = null;
   let offset = 0;
 
@@ -42,9 +41,8 @@ function parseSections(body) {
 
     const heading = text.match(/^###\s+(.+?)\s*$/);
     const name = heading?.[1].trim().toLowerCase();
-    if (name && KNOWN_SECTIONS.has(name) && !seenSections.has(name)) {
+    if (name && KNOWN_SECTIONS.has(name)) {
       headings.push({ index: offset, length: line.length, name });
-      seenSections.add(name);
     }
     offset += line.length;
   }
@@ -54,7 +52,9 @@ function parseSections(body) {
     const heading = headings[index];
     const contentStart = heading.index + heading.length;
     const contentEnd = headings[index + 1]?.index ?? body.length;
-    sections.set(heading.name, body.slice(contentStart, contentEnd).trim());
+    if (!sections.has(heading.name)) {
+      sections.set(heading.name, body.slice(contentStart, contentEnd).trim());
+    }
   }
   return sections;
 }
