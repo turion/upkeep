@@ -6,6 +6,8 @@ body:
     id: classification
     attributes:
       label: Classification
+      # Keep these values in sync with the workflow validator, skills/ci-triage.md,
+      # and policies/escalation-contract.md.
       options:
         - Flaky
         - Simple mechanical

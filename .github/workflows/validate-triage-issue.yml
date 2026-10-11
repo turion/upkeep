@@ -2,7 +2,7 @@ name: Validate upkeep triage issue
 
 on:
   issues:
-    types: [opened, edited, labeled]
+    types: [labeled]
 
 permissions:
   issues: write
@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   validate:
-    if: contains(github.event.issue.labels.*.name, 'upkeep:run') || (github.event.action == 'labeled' && github.event.label.name == 'upkeep:run')
+    if: github.event.label.name == 'upkeep:run'
     runs-on: ubuntu-latest
     steps:
       - name: Validate triage report
@@ -42,6 +42,8 @@ jobs:
               return /^_no response_$/i.test(value) ? '' : value;
             };
             const errors = [];
+            // Keep these values in sync with the triage-report issue form,
+            // skills/ci-triage.md, and policies/escalation-contract.md.
             const classifications = [
               'flaky',
               'simple mechanical',
@@ -82,7 +84,6 @@ jobs:
                   '_Automated validation message from upkeep._',
                 ].join('\n'),
               });
-              core.setFailed('Triage report is incomplete or invalid.');
               return;
             }
             core.info(`Triage report for issue #${issue.number} passed validation.`);

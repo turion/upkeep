@@ -6,7 +6,11 @@ Prefer a standard `update-flake-lock` GitHub Action over agentic work, such as [
 
 ## Safety rules
 
-- Auto-merge eligibility is defined by [`auto-merge-trusted.yml`](../.github/workflows/auto-merge-trusted.yml): the PR must be non-draft and from this repository, and must be authored by the repository owner, include a GitHub-recognized commit authored or co-authored by the owner, or include an `Assisted-by: upkeep-bot` commit footer. The workflow checks this exact footer for backward compatibility; ordinary upkeep commits should use the `Assisted-by: upkeep; <tool>` convention in [`AGENTS.md`](../AGENTS.md). Bot identity and branch names alone are not trusted.
+- Auto-merge eligibility is defined by [`auto-merge-trusted.yml`](../.github/workflows/auto-merge-trusted.yml):
+  - The PR must be non-draft and from this repository.
+  - It must be authored by the repository owner, include a GitHub-recognized commit authored or co-authored by the owner, or include an `Assisted-by: upkeep-bot` commit footer.
+  - Bot identity and branch names alone are not trusted.
+- The workflow checks the exact `Assisted-by: upkeep-bot` footer for backward compatibility. Ordinary upkeep commits should use the `Assisted-by: upkeep; <tool>` convention in [`AGENTS.md`](../AGENTS.md).
 - Require all required checks to be green before merging; configure branch protection and auto-merge accordingly.
 - For repos with governance constraints, do not publish human-facing PR text or comments without review.
 - Follow the target repository's contribution and AI policies.
