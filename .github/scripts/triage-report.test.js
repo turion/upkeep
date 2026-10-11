@@ -71,3 +71,11 @@ test('rejects empty evidence and the issue form empty-response placeholder', () 
     assert.ok(validateTriageReport(report({ evidence })).includes('Evidence is required.'));
   }
 });
+
+test('rejects empty bodies and missing required sections', () => {
+  const errors = validateTriageReport('');
+  assert.equal(errors.length, 3);
+  assert.match(errors[0], /Classification must be one of:/);
+  assert.equal(errors[1], 'Evidence is required.');
+  assert.match(errors[2], /Attempt count must be an integer/);
+});
