@@ -1,6 +1,7 @@
 name: CI triage report
 description: Record evidence and next steps for a CI failure
 title: "CI triage: "
+labels: ["spoke ci failure kind"]
 body:
   - type: dropdown
     id: classification
