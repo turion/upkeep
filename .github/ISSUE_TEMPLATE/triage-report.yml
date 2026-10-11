@@ -28,8 +28,6 @@ body:
       label: Attempt count
       description: Enter an integer from 0 through 2.
       placeholder: "0"
-      regex: "^(0|1|2)$"
-      regexErrorMessage: Enter 0, 1, or 2.
     validations:
       required: true
   - type: textarea
