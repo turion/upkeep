@@ -1,0 +1,72 @@
+name: Validate upkeep triage issue
+
+on:
+  issues:
+    types: [opened, edited, labeled]
+
+permissions:
+  issues: write
+
+concurrency:
+  group: triage-validation-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    if: contains(github.event.issue.labels.*.name, 'upkeep:run') || (github.event.action == 'labeled' && github.event.label.name == 'upkeep:run')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate triage report
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const body = issue.body || '';
+            const headings = [...body.matchAll(/^###\s+(.+?)\s*$/gm)];
+            const sections = new Map();
+            for (let index = 0; index < headings.length; index += 1) {
+              const heading = headings[index];
+              const contentStart = heading.index + heading[0].length;
+              const contentEnd = headings[index + 1]?.index ?? body.length;
+              sections.set(heading[1].trim().toLowerCase(), body.slice(contentStart, contentEnd).trim());
+            }
+            const field = (name) => sections.get(name.toLowerCase()) || '';
+            const errors = [];
+            const classifications = [
+              'flaky',
+              'simple mechanical',
+              'complex or policy-sensitive',
+              'external upstream breakage',
+            ];
+            if (!classifications.includes(field('Classification').toLowerCase())) {
+              errors.push('Classification must be one of the supported values.');
+            }
+            if (!field('Evidence')) {
+              errors.push('Evidence is required.');
+            }
+            const attemptCount = field('Attempt count');
+            if (!/^\d+$/.test(attemptCount) || Number(attemptCount) > 2) {
+              errors.push('Attempt count must be an integer from 0 through 2.');
+            }
+
+            if (errors.length > 0) {
+              await github.rest.issues.removeLabel({
+                ...context.repo,
+                issue_number: issue.number,
+                name: 'upkeep:run',
+              });
+              await github.rest.issues.createComment({
+                ...context.repo,
+                issue_number: issue.number,
+                body: [
+                  'Upkeep triage validation failed, so the `upkeep:run` label was removed. Correct the following fields and re-add the label:',
+                  '',
+                  ...errors.map((error) => `- ${error}`),
+                  '',
+                  '_Automated validation message from upkeep._',
+                ].join('\n'),
+              });
+              core.setFailed('Triage report is incomplete or invalid.');
+              return;
+            }
+            core.info(`Triage report for issue #${issue.number} passed validation.`);

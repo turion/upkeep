@@ -65,5 +65,6 @@
 
 - `policies/nixpkgs.md`
 - `policies/stackage.md`
+- `policies/escalation-contract.md`
 
 These are the canonical sources of truth for upstream policy-sensitive work.

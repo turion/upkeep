@@ -17,6 +17,20 @@ Classify CI failures and route maintenance work without acting as the human main
 - Prepare simple mechanical fixes as draft PRs.
 - Do not auto-fix complex, ambiguous, or policy-sensitive failures.
 - Never merge without all required checks green.
+- Follow [`policies/escalation-contract.md`](../policies/escalation-contract.md) for allowed outcomes, attempt limits, and required reporting.
+- The `upkeep:run` label is a human trigger, not permission to bypass validation or safety rules. The issue validator checks the triage report and does not launch a skill.
+
+## Required triage report
+
+Include these sections in the issue body:
+
+- Classification: `Flaky`, `Simple mechanical`, `Complex or policy-sensitive`, or `External upstream breakage`.
+- Evidence: relevant CI log excerpts or links.
+- Attempt count: an integer from 0 to 2.
+- What was tried.
+- Uncertainty.
+- Recommended human action.
+- Classical alternative considered.
 
 ## Escalation
 
