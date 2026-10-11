@@ -30,13 +30,49 @@ jobs:
             }
             const MAX_ATTEMPTS = 2;
             const body = issue.body || '';
-            const headings = [...body.matchAll(/^###\s+(.+?)\s*$/gm)];
+            const knownSections = new Set([
+              'classification',
+              'evidence',
+              'attempt count',
+              'what was tried',
+              'uncertainty',
+              'recommended human action',
+              'classical alternative considered',
+            ]);
+            const headings = [];
+            const seenSections = new Set();
+            let fence = null;
+            let offset = 0;
+            for (const line of body.split(/(?<=\n)/)) {
+              const text = line.replace(/\r?\n$/, '');
+              const marker = text.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+              if (fence) {
+                if (marker && marker[1][0] === fence.character &&
+                    marker[1].length >= fence.length && marker[2].trim() === '') {
+                  fence = null;
+                }
+                offset += line.length;
+                continue;
+              }
+              if (marker) {
+                fence = { character: marker[1][0], length: marker[1].length };
+                offset += line.length;
+                continue;
+              }
+              const heading = text.match(/^###\s+(.+?)\s*$/);
+              const name = heading?.[1].trim().toLowerCase();
+              if (name && knownSections.has(name) && !seenSections.has(name)) {
+                headings.push({ index: offset, length: line.length, name });
+                seenSections.add(name);
+              }
+              offset += line.length;
+            }
             const sections = new Map();
             for (let index = 0; index < headings.length; index += 1) {
               const heading = headings[index];
-              const contentStart = heading.index + heading[0].length;
+              const contentStart = heading.index + heading.length;
               const contentEnd = headings[index + 1]?.index ?? body.length;
-              sections.set(heading[1].trim().toLowerCase(), body.slice(contentStart, contentEnd).trim());
+              sections.set(heading.name, body.slice(contentStart, contentEnd).trim());
             }
             const field = (name) => {
               const value = sections.get(name.toLowerCase()) || '';
@@ -78,7 +114,7 @@ jobs:
                 ...context.repo,
                 issue_number: issue.number,
                 body: [
-                  'Upkeep triage validation failed, so the `upkeep:run` label was removed. Correct the following fields and re-add the label:',
+                  'Upkeep triage validation failed, so the `upkeep:run` label was removed. Use the CI triage issue form, correct the following fields, and re-add the label:',
                   '',
                   ...errors.map((error) => `- ${error}`),
                   '',
