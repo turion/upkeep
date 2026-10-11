@@ -9,7 +9,7 @@ permissions:
 
 concurrency:
   group: triage-validation-${{ github.event.issue.number }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   validate:
@@ -20,7 +20,14 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const issue = context.payload.issue;
+            const { data: issue } = await github.rest.issues.get({
+              ...context.repo,
+              issue_number: context.payload.issue.number,
+            });
+            if (!issue.labels.some(({ name }) => name === 'upkeep:run')) {
+              core.info(`Issue #${issue.number} no longer has the upkeep:run label.`);
+              return;
+            }
             const body = issue.body || '';
             const headings = [...body.matchAll(/^###\s+(.+?)\s*$/gm)];
             const sections = new Map();
@@ -30,7 +37,10 @@ jobs:
               const contentEnd = headings[index + 1]?.index ?? body.length;
               sections.set(heading[1].trim().toLowerCase(), body.slice(contentStart, contentEnd).trim());
             }
-            const field = (name) => sections.get(name.toLowerCase()) || '';
+            const field = (name) => {
+              const value = sections.get(name.toLowerCase()) || '';
+              return /^_no response_$/i.test(value) ? '' : value;
+            };
             const errors = [];
             const classifications = [
               'flaky',
@@ -50,11 +60,17 @@ jobs:
             }
 
             if (errors.length > 0) {
-              await github.rest.issues.removeLabel({
-                ...context.repo,
-                issue_number: issue.number,
-                name: 'upkeep:run',
-              });
+              try {
+                await github.rest.issues.removeLabel({
+                  ...context.repo,
+                  issue_number: issue.number,
+                  name: 'upkeep:run',
+                });
+              } catch (error) {
+                if (error.status !== 404) {
+                  throw error;
+                }
+              }
               await github.rest.issues.createComment({
                 ...context.repo,
                 issue_number: issue.number,
