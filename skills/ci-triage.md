@@ -26,7 +26,7 @@ Classify CI failures and route maintenance work without acting as the human main
 - Before opening an issue, read all open `spoke-ci-failure` issues (title, body, comments). If one describes the same root cause, comment on it with the new occurrence (repo, run link, date, evidence); otherwise open a new issue. One issue per root cause.
 - Find the root cause, not the symptom. For Nix builds, take the first `Cannot build '<package>.drv'` whose reason is not `N dependency failed`; ignore downstream derivations and the `alls-green` gate job.
 - Failures hitting every matrix job and operating system identically point at a deterministic (usually upstream) cause. Do not retry them.
-- Retry only on transient evidence (truncated tarball, network reset, runner loss), at most twice per root cause, and record it in the attempt count. `.github/workflows/ci-triage.yml` polls all of the owner's repositories (opt-outs in `.github/ci-triage-repos.json`) with a read-only token: it flags retry candidates and lists failures needing triage, but a human re-runs jobs.
+- Retry only on transient evidence (truncated tarball, network reset, runner loss), at most twice per root cause, and record it in the attempt count. `.github/workflows/ci-triage.yml` polls all of the owner's repositories (opt-outs in `.github/ci-triage-repos.json`) and re-runs failed jobs once on transient evidence; its summary lists failures needing triage.
 - When many comments accumulate on the same issue, propose a deterministic rule for that cause.
 
 ## Required triage report

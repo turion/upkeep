@@ -1,10 +1,10 @@
 name: CI failure poll
 
-# Polls the owner's repositories for failed CI runs and summarises them for
-# triage, flagging runs whose logs show a transient cause as retry candidates
-# (a human re-runs them). It never writes to the polled repositories.
-# Required secret UPKEEP_CI_TOKEN: a read-only token for the repositories and
-# Actions logs of the polled repositories.
+# Polls the owner's repositories for failed CI runs, re-runs the failed jobs of
+# runs whose logs show a transient cause (at most once per run), and summarises
+# everything else for triage. Its only write is that re-run.
+# Required secret UPKEEP_CI_TOKEN: a fine-grained token with Actions: read and
+# write (and Metadata: read) on the polled repositories.
 
 on:
   schedule:
@@ -14,6 +14,10 @@ on:
       lookback-hours:
         description: Only consider runs created in the last N hours
         default: '7'
+      dry-run:
+        description: Do not re-run, only report
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -30,6 +34,7 @@ jobs:
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         env:
           LOOKBACK_HOURS: ${{ github.event.inputs.lookback-hours || '7' }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.dry-run == 'true' }}
         with:
           github-token: ${{ secrets.UPKEEP_CI_TOKEN }}
           script: |
@@ -37,6 +42,7 @@ jobs:
             const dir = `${process.env.GITHUB_WORKSPACE}/.github`;
             const { extractRootCause, selectRepos, shouldRetry } = require(`${dir}/scripts/ci-failures.js`);
             const config = JSON.parse(fs.readFileSync(`${dir}/ci-triage-repos.json`, 'utf8'));
+            const dryRun = process.env.DRY_RUN === 'true';
             const since = new Date(Date.now() - Number(process.env.LOOKBACK_HOURS) * 3600 * 1000).toISOString();
             const botActors = new Set(['dependabot[bot]', 'github-actions[bot]']);
 
@@ -69,7 +75,10 @@ jobs:
                   if (cause.kind === 'unknown' || found.kind === 'nix-build') cause = found;
                 }
                 const decision = shouldRetry({ runAttempt: run.run_attempt, jobLogs });
-                const action = decision.retry ? 'retry candidate (transient)' : `no retry (${decision.reason})`;
+                const action = decision.retry ? (dryRun ? 'would retry (transient)' : 'retried (transient)') : `not retried (${decision.reason})`;
+                if (decision.retry && !dryRun) {
+                  await github.rest.actions.reRunWorkflowFailedJobs({ owner, repo, run_id: run.id });
+                }
                 rows.push({ repo: fullName, run, cause, action });
               }
             }
